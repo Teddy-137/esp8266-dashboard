@@ -4,47 +4,175 @@
     <title>ESP8266 IoT Dashboard</title>
     <meta http-equiv="refresh" content="2">
     <style>
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap');
+
         body {
-            background-color: #0f172a;
-            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            font-family: 'Poppins', sans-serif;
             color: white;
             text-align: center;
+            min-height: 100vh;
+            background: #000000;
+            background-image: 
+                radial-gradient(at 47% 33%, hsl(162.00, 77%, 40%) 0, transparent 59%), 
+                radial-gradient(at 82% 65%, hsl(218.00, 39%, 11%) 0, transparent 55%);
         }
+
+        .container {
+            padding: 2rem;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            font-size: 3.5rem;
+            margin: 2rem 0;
+            background: linear-gradient(to right, #00ff87, #60efff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            filter: drop-shadow(0 0 2rem rgba(0,255,135,0.3));
+        }
+
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+            padding: 1rem;
+        }
+
         .card {
-            background: #1e293b;
-            padding: 20px;
-            margin: 20px auto;
-            width: 300px;
-            border-radius: 16px;
-            box-shadow: 0 0 20px rgba(0,255,255,0.2);
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 24px;
+            padding: 2rem;
+            position: relative;
+            overflow: hidden;
+            backdrop-filter: blur(20px);
+            transition: all 0.3s ease;
         }
-        .value {
-            font-size: 36px;
-            color: #38bdf8;
+
+        .card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(45deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+            transform: translateX(-100%);
+            transition: 0.5s;
         }
+
+        .card:hover::before {
+            transform: translateX(100%);
+        }
+
+        .card:hover {
+            transform: translateY(-10px) scale(1.02);
+            box-shadow: 0 10px 30px rgba(0,255,135,0.2);
+        }
+
         .label {
-            font-size: 18px;
-            color: #94a3b8;
+            font-size: 1.2rem;
+            color: #a0aec0;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+
+        .value {
+            font-size: 3.5rem;
+            font-weight: 600;
+            background: linear-gradient(to right, #00ff87, #60efff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin: 1rem 0;
+        }
+
+        .card-icon {
+            font-size: 2rem;
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            opacity: 0.2;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 1rem;
+            }
+
+            h1 {
+                font-size: 2.5rem;
+            }
+
+            .value {
+                font-size: 2.5rem;
+            }
+        }
+
+        .pulse {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            top: 0;
+            left: 0;
+            background: radial-gradient(circle, rgba(0,255,135,0.1) 0%, transparent 70%);
+            opacity: 0;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% {
+                transform: scale(0.95);
+                opacity: 0;
+            }
+            50% {
+                transform: scale(1);
+                opacity: 0.3;
+            }
+            100% {
+                transform: scale(0.95);
+                opacity: 0;
+            }
         }
     </style>
 </head>
 <body>
-    <h1>Dashboard</h1>
+    <div class="container">
+        <h1>Dashboard</h1>
+        
+        <div class="dashboard-grid">
+            <div class="card">
+                <div class="pulse"></div>
+                <div class="card-icon">🌡️</div>
+                <div class="label">
+                    <span>Temperature</span>
+                </div>
+                <div class="value">{{ data.temperature }}°C</div>
+            </div>
 
-    <div class="card">
-        <div class="label">🌡 Temperature</div>
-        <div class="value">{{ data.temperature }} °C</div>
+            <div class="card">
+                <div class="pulse"></div>
+                <div class="card-icon">💧</div>
+                <div class="label">
+                    <span>Humidity</span>
+                </div>
+                <div class="value">{{ data.humidity }}%</div>
+            </div>
+
+            <div class="card">
+                <div class="pulse"></div>
+                <div class="card-icon">🔋</div>
+                <div class="label">
+                    <span>Battery Level</span>
+                </div>
+                <div class="value">{{ data.battery }}%</div>
+            </div>
+        </div>
     </div>
-
-    <div class="card">
-        <div class="label">💧 Humidity</div>
-        <div class="value">{{ data.humidity }} %</div>
-    </div>
-
-    <div class="card">
-        <div class="label">🔋 Battery</div>
-        <div class="value">{{ data.battery }} %</div>
-    </div>
-
 </body>
 </html>
