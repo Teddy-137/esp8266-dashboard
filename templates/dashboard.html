@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>ESP8266 IoT Dashboard</title>
+    <meta http-equiv="refresh" content="2">
+    <style>
+        body {
+            background-color: #0f172a;
+            font-family: Arial, sans-serif;
+            color: white;
+            text-align: center;
+        }
+        .card {
+            background: #1e293b;
+            padding: 20px;
+            margin: 20px auto;
+            width: 300px;
+            border-radius: 16px;
+            box-shadow: 0 0 20px rgba(0,255,255,0.2);
+        }
+        .value {
+            font-size: 36px;
+            color: #38bdf8;
+        }
+        .label {
+            font-size: 18px;
+            color: #94a3b8;
+        }
+    </style>
+</head>
+<body>
+    <h1>Dashboard</h1>
+
+    <div class="card">
+        <div class="label">🌡 Temperature</div>
+        <div class="value">{{ data.temperature }} °C</div>
+    </div>
+
+    <div class="card">
+        <div class="label">💧 Humidity</div>
+        <div class="value">{{ data.humidity }} %</div>
+    </div>
+
+    <div class="card">
+        <div class="label">🔋 Battery</div>
+        <div class="value">{{ data.battery }} %</div>
+    </div>
+
+</body>
+</html>
