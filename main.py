@@ -17,14 +17,14 @@ class SensorData(BaseModel):
 latest_data = {"temperature": 0, "humidity": 0, "battery": 0}
 
 
-@app.post("/data")
+@app.post("/")
 def receive_data(data: SensorData):
     global latest_data
     latest_data = data.dict()
     return {"status": "ok"}
 
 
-@app.get("/", response_class=HTMLResponse)
+@app.get("/data", response_class=HTMLResponse)
 def dashboard(request: Request):
     return templates.TemplateResponse(
         "dashboard.html", {"request": request, "data": latest_data}
