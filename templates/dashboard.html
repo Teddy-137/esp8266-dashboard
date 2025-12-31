@@ -1,11 +1,16 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+    <meta charset="UTF-8">
     <title>ESP8266 IoT Dashboard</title>
-    <meta http-equiv="refresh" content="2">
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap');
 
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
+    
+    <!-- Chart.js for graphs -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <style>
         body {
             margin: 0;
             padding: 0;
@@ -15,196 +20,261 @@
             min-height: 100vh;
             background: #000000;
             background-image: 
-                radial-gradient(at 47% 33%, hsl(162.00, 77%, 40%) 0, transparent 59%), 
-                radial-gradient(at 82% 65%, hsl(218.00, 39%, 11%) 0, transparent 55%);
+                radial-gradient(at 47% 33%, hsl(162, 77%, 40%) 0, transparent 59%), 
+                radial-gradient(at 82% 65%, hsl(218, 39%, 11%) 0, transparent 55%);
         }
 
         .container {
             padding: 2rem;
             max-width: 1200px;
-            margin: 0 auto;
+            margin: auto;
         }
 
         h1 {
-            font-size: 3.5rem;
-            margin: 2rem 0;
+            font-size: 3rem;
+            margin-bottom: 2rem;
             background: linear-gradient(to right, #00ff87, #60efff);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
-            filter: drop-shadow(0 0 2rem rgba(0,255,135,0.3));
         }
 
         .dashboard-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
             gap: 2rem;
-            padding: 1rem;
         }
 
         .card {
-            background: rgba(255, 255, 255, 0.03);
+            background: rgba(255, 255, 255, 0.05);
             border: 1px solid rgba(255, 255, 255, 0.1);
             border-radius: 24px;
             padding: 2rem;
             position: relative;
-            overflow: hidden;
             backdrop-filter: blur(20px);
-            transition: all 0.3s ease;
-        }
-
-        .card::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(45deg, transparent, rgba(255, 255, 255, 0.1), transparent);
-            transform: translateX(-100%);
-            transition: 0.5s;
-        }
-
-        .card:hover::before {
-            transform: translateX(100%);
-        }
-
-        .card:hover {
-            transform: translateY(-10px) scale(1.02);
-            box-shadow: 0 10px 30px rgba(0,255,135,0.2);
         }
 
         .label {
-            font-size: 1.2rem;
+            font-size: 1.1rem;
             color: #a0aec0;
-            margin-bottom: 1rem;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 0.5rem;
         }
 
         .value {
-            font-size: 3.5rem;
+            font-size: 3rem;
             font-weight: 600;
+            margin-top: 1rem;
             background: linear-gradient(to right, #00ff87, #60efff);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
-            margin: 1rem 0;
         }
 
         .card-icon {
-            font-size: 2rem;
             position: absolute;
             top: 1rem;
             right: 1rem;
-            opacity: 0.2;
+            font-size: 2rem;
+            opacity: 0.25;
         }
 
-        @media (max-width: 768px) {
-            .container {
-                padding: 1rem;
-            }
-
-            h1 {
-                font-size: 2.5rem;
-            }
-
-            .value {
-                font-size: 2.5rem;
-            }
+        button {
+            padding: 12px 24px;
+            margin: 10px;
+            border-radius: 12px;
+            border: none;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 600;
         }
 
-        .pulse {
-            position: absolute;
-            width: 100%;
-            height: 100%;
-            top: 0;
-            left: 0;
-            background: radial-gradient(circle, rgba(0,255,135,0.1) 0%, transparent 70%);
-            opacity: 0;
-            animation: pulse 2s infinite;
+        .on {
+            background: #00ff87;
+            color: black;
         }
 
-        @keyframes pulse {
-            0% {
-                transform: scale(0.95);
-                opacity: 0;
-            }
-            50% {
-                transform: scale(1);
-                opacity: 0.3;
-            }
-            100% {
-                transform: scale(0.95);
-                opacity: 0;
-            }
+        .off {
+            background: #ff4d4d;
+            color: white;
+        }
+
+        #relay-status {
+            font-size: 1.2rem;
+            margin-top: 1rem;
+        }
+
+        /* Graph card specific styles */
+        .graph-card {
+            grid-column: 1 / -1;
+            min-height: 400px;
+        }
+
+        .chart-container {
+            position: relative;
+            height: 300px;
+            margin-top: 1rem;
         }
     </style>
 
     <script>
+        let temperatureChart;
+        let temperatureData = [];
+        let timeLabels = [];
+
         function relayOn() {
-        fetch("/relay/on", { method: "POST" });
+            fetch("/relay/on", { method: "POST" });
         }
 
         function relayOff() {
-        fetch("/relay/off", { method: "POST" });
+            fetch("/relay/off", { method: "POST" });
         }
 
-        // Auto-refresh data every 2 seconds (WITHOUT page reload)
-        setInterval(() => {
-        fetch("/")
-            .then(res => res.text())
-            .then(html => {
-            document.documentElement.innerHTML = html;
+        function updateUI(state) {
+            document.getElementById("temp").textContent =
+                state.data.temperature + "°C";
+
+            document.getElementById("hum").textContent =
+                state.data.humidity + "%";
+
+            document.getElementById("bat").textContent =
+                state.data.battery + "%";
+
+            document.getElementById("relay-status").textContent =
+                state.relay ? "ON" : "OFF";
+
+            // Update temperature graph
+            updateTemperatureGraph(state.data.temperature);
+        }
+
+        function updateTemperatureGraph(currentTemp) {
+            const now = new Date();
+            const timeString = now.toLocaleTimeString();
+
+            // Add new data point
+            temperatureData.push(currentTemp);
+            timeLabels.push(timeString);
+
+            // Keep only last 20 data points
+            if (temperatureData.length > 20) {
+                temperatureData.shift();
+                timeLabels.shift();
+            }
+
+            // Update chart if it exists
+            if (temperatureChart) {
+                temperatureChart.data.labels = timeLabels;
+                temperatureChart.data.datasets[0].data = temperatureData;
+                temperatureChart.update('none'); // Update without animation
+            }
+        }
+
+        function initializeChart() {
+            const ctx = document.getElementById('temperatureChart').getContext('2d');
+            
+            temperatureChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: timeLabels,
+                    datasets: [{
+                        label: 'Temperature (°C)',
+                        data: temperatureData,
+                        borderColor: '#00ff87',
+                        backgroundColor: 'rgba(0, 255, 135, 0.1)',
+                        borderWidth: 2,
+                        fill: true,
+                        tension: 0.4,
+                        pointBackgroundColor: '#00ff87',
+                        pointBorderColor: '#ffffff',
+                        pointBorderWidth: 2,
+                        pointRadius: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        x: {
+                            grid: {
+                                color: 'rgba(255, 255, 255, 0.1)'
+                            },
+                            ticks: {
+                                color: '#a0aec0'
+                            }
+                        },
+                        y: {
+                            grid: {
+                                color: 'rgba(255, 255, 255, 0.1)'
+                            },
+                            ticks: {
+                                color: '#a0aec0'
+                            }
+                        }
+                    }
+                }
             });
+        }
+
+        // Initialize chart when page loads
+        window.addEventListener('load', function() {
+            initializeChart();
+        });
+
+        // Poll backend every 2 seconds (safe & clean)
+        setInterval(() => {
+            fetch("/api/state")
+                .then(res => res.json())
+                .then(updateUI)
+                .catch(err => console.error("API error:", err));
         }, 2000);
     </script>
-
-
 </head>
+
 <body>
     <div class="container">
-        <h1>Dashboard</h1>
-        
+        <h1>ESP8266 Dashboard</h1>
+
         <div class="dashboard-grid">
+
             <div class="card">
-                <div class="pulse"></div>
                 <div class="card-icon">🌡️</div>
-                <div class="label">
-                    <span>Temperature</span>
-                </div>
-                <div class="value">{{ data.temperature }}°C</div>
+                <div class="label">Temperature</div>
+                <div class="value" id="temp">{{ data.temperature }}°C</div>
             </div>
 
             <div class="card">
-                <div class="pulse"></div>
                 <div class="card-icon">💧</div>
-                <div class="label">
-                    <span>Humidity</span>
-                </div>
-                <div class="value">{{ data.humidity }}%</div>
+                <div class="label">Humidity</div>
+                <div class="value" id="hum">{{ data.humidity }}%</div>
             </div>
 
             <div class="card">
-                <div class="pulse"></div>
                 <div class="card-icon">🔋</div>
-                <div class="label">
-                    <span>Battery Level</span>
-                </div>
-                <div class="value">{{ data.battery }}%</div>
+                <div class="label">Battery</div>
+                <div class="value" id="bat">{{ data.battery }}%</div>
             </div>
+
             <div class="card">
+                <div class="card-icon">🔌</div>
+                <div class="label">Relay Control</div>
 
+                <button class="on" onclick="relayOn()">ON</button>
+                <button class="off" onclick="relayOff()">OFF</button>
 
-        <div class="label">🔌 Relay Control</div>
+                <div id="relay-status">
+                    {{ "ON" if relay else "OFF" }}
+                </div>
+            </div>
 
-        <button onclick="relayOn()" style="margin:10px; padding:10px 20px;">ON</button>
-        <button onclick="relayOff()" style="margin:10px; padding:10px 20px;">OFF</button>
-
-        <div style="margin-top:10px;">
-            Status: <strong>{{ "ON" if relay else "OFF" }}</strong>
-        </div>
-        </div>
+            <!-- New Graph Card -->
+            <div class="card graph-card">
+                <div class="card-icon">📊</div>
+                <div class="label">Temperature History</div>
+                <div class="chart-container">
+                    <canvas id="temperatureChart"></canvas>
+                </div>
+            </div>
 
         </div>
     </div>
