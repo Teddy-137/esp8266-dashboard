@@ -3,13 +3,15 @@ from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
-
+from threading import Lock
 import os
 
 PORT = int(os.environ.get("PORT", 8000))
+API_KEY = os.environ.get("API_KEY", "esp8266-key")
 
 app = FastAPI()
 templates = Jinja2Templates(directory="templates")
+state_lock = Lock()
 
 app.add_middleware(
     CORSMiddleware,
@@ -26,6 +28,9 @@ class SensorData(BaseModel):
     humidity: float
     battery: int
 
+    class Config:
+        extra = "ignore"
+
 
 latest_data = {
     "temperature": 0.0,
@@ -33,22 +38,23 @@ latest_data = {
     "battery": 0,
 }
 
-# Relay control
-relay_state = False  # actual relay output
-relay_mode = "AUTO"  # AUTO or MANUAL
+relay_state = False
+relay_mode = "AUTO"
 
 
 @app.post("/data")
-def receive_data(data: SensorData):
+def receive_data(data: SensorData, request: Request):
     global latest_data, relay_state
 
-    latest_data = data.dict()
+    if request.headers.get("X-API-KEY") != API_KEY:
+        return JSONResponse(status_code=403, content={"error": "forbidden"})
 
-    # AUTO mode → server decides relay
-    if relay_mode == "AUTO":
-        relay_state = data.temperature >= TEMP_THRESHOLD
+    with state_lock:
+        latest_data = data.dict()
+        if relay_mode == "AUTO":
+            relay_state = data.temperature >= TEMP_THRESHOLD
 
-    return {"status": "ok", "relay": relay_state, "mode": relay_mode}
+    return {"relay": relay_state, "mode": relay_mode}
 
 
 @app.get("/api/state")
@@ -59,24 +65,32 @@ def api_state():
 @app.post("/relay/on")
 def relay_on():
     global relay_state, relay_mode
-    relay_mode = "MANUAL"
-    relay_state = True
+    with state_lock:
+        relay_mode = "MANUAL"
+        relay_state = True
     return {"relay": "ON", "mode": relay_mode}
 
 
 @app.post("/relay/off")
 def relay_off():
     global relay_state, relay_mode
-    relay_mode = "MANUAL"
-    relay_state = False
+    with state_lock:
+        relay_mode = "MANUAL"
+        relay_state = False
     return {"relay": "OFF", "mode": relay_mode}
 
 
 @app.post("/relay/auto")
 def relay_auto():
     global relay_mode
-    relay_mode = "AUTO"
+    with state_lock:
+        relay_mode = "AUTO"
     return {"mode": "AUTO"}
+
+
+@app.get("/health")
+def health():
+    return {"status": "ok"}
 
 
 @app.get("/", response_class=HTMLResponse)
