@@ -16,6 +16,8 @@
         :root {
             --glass-bg: rgba(255, 255, 255, 0.03);
             --glass-border: rgba(255, 255, 255, 0.05);
+            --glass-bg: rgba(255, 255, 255, 0.03);
+            --glass-border: rgba(255, 255, 255, 0.05);
             --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
             --text-main: #ffffff;
             --text-muted: rgba(255, 255, 255, 0.6);
@@ -231,6 +233,8 @@
             font-size: 1.5rem;
             color: var(--text-muted);
             margin-left: 5px;
+            -webkit-text-fill-color: initial;
+            /* Reset specific fill for unit if needed, or keep same */
         }
 
         /* Specific Card Accents */
@@ -378,11 +382,11 @@
 
     <div class="container">
         <header>
-            <h1>ESP8266 Dashboard</h1>
+            <h1>My Room</h1>
             <div class="subtitle">Live Environmental Monitor</div>
             <div class="status-badge">
-                <div class="status-dot" id="device-status-dot"></div>
-                <span class="status-text" id="device-status-text">Connecting...</span>
+                <div class="status-dot online"></div>
+                <span class="status-text">Online</span>
             </div>
         </header>
 
@@ -394,7 +398,7 @@
                     <div class="card-icon">🌡️</div>
                 </div>
                 <div class="value-wrapper">
-                    <span class="value" id="temp">{{ data.temperature }}</span><span class="unit">°C</span>
+                    <span class="value">24.5</span><span class="unit">°C</span>
                 </div>
             </div>
 
@@ -404,7 +408,7 @@
                     <div class="card-icon">💧</div>
                 </div>
                 <div class="value-wrapper">
-                    <span class="value" id="hum">{{ data.humidity }}</span><span class="unit">%</span>
+                    <span class="value">60</span><span class="unit">%</span>
                 </div>
             </div>
 
@@ -414,7 +418,7 @@
                     <div class="card-icon">⚡</div>
                 </div>
                 <div class="value-wrapper">
-                    <span class="value" id="bat">{{ data.battery }}</span><span class="unit">%</span>
+                    <span class="value">85</span><span class="unit">%</span>
                 </div>
             </div>
 
@@ -427,10 +431,11 @@
                 <div class="relay-wrapper" style="text-align: center;">
                     <div class="switch-container">
                         <label class="switch">
-                            <input type="checkbox" id="relay-toggle" onchange="toggleRelay(this)">
+                            <input type="checkbox" checked
+                                onchange="document.getElementById('relay-text').textContent = this.checked ? 'ON' : 'OFF'">
                             <span class="slider"></span>
                         </label>
-                        <div class="relay-state-text" id="relay-text">OFF</div>
+                        <div class="relay-state-text" id="relay-text">ON</div>
                     </div>
                 </div>
             </div>
@@ -449,152 +454,52 @@
     </div>
 
     <script>
-        let temperatureChart;
-        let temperatureData = [];
-        let timeLabels = [];
+        // Dummy data for preview
+        const ctx = document.getElementById('temperatureChart').getContext('2d');
 
-        function toggleRelay(checkbox) {
-            const action = checkbox.checked ? "on" : "off";
-            fetch(`/relay/${action}`, { method: "POST" })
-                .then(res => res.json())
-                .then(data => {
-                    // Start a confetti or particle effect here if we had one
-                    console.log(`Relay ${action}`);
-                })
-                .catch(err => {
-                    console.error("Error toggling relay:", err);
-                    checkbox.checked = !checkbox.checked; // Revert on error
-                });
-        }
+        // Gradient for the chart line
+        let gradient = ctx.createLinearGradient(0, 0, 0, 400);
+        gradient.addColorStop(0, 'rgba(244, 63, 94, 0.5)'); // Rose
+        gradient.addColorStop(1, 'rgba(244, 63, 94, 0)');
 
-        function updateUI(state) {
-            // Update text values with animation if changed
-            animateValue("temp", state.data.temperature);
-            animateValue("hum", state.data.humidity);
-            animateValue("bat", state.data.battery);
-
-            // Update Relay Switch
-            const toggle = document.getElementById("relay-toggle");
-            const relayText = document.getElementById("relay-text");
-
-            // Only update if not currently being interacted with (optional safeguard)
-            if (toggle.checked !== state.relay) {
-                toggle.checked = state.relay;
-            }
-            relayText.textContent = state.relay ? "ON" : "OFF";
-
-            // Update Device Status
-            const statusDot = document.getElementById("device-status-dot");
-            const statusText = document.getElementById("device-status-text");
-
-            if (state.device === "ONLINE") {
-                statusDot.classList.add("online");
-                statusText.textContent = "Online";
-            } else {
-                statusDot.classList.remove("online");
-                statusText.textContent = "Offline";
-            }
-
-            // Update temperature graph
-            updateTemperatureGraph(state.data.temperature);
-        }
-
-        function animateValue(id, newValue) {
-            const obj = document.getElementById(id);
-            const startStr = obj.textContent;
-            // Simple check: if already same, return
-            if (parseFloat(startStr) === newValue) return;
-
-            // For now, direct update. Can be replaced with a count-up lib or custom loop
-            obj.textContent = newValue;
-
-            // Add a temporary glow class
-            obj.classList.add("updated");
-            setTimeout(() => obj.classList.remove("updated"), 500);
-        }
-
-        function updateTemperatureGraph(currentTemp) {
-            const now = new Date();
-            const timeString = now.toLocaleTimeString();
-
-            // Add new data point
-            temperatureData.push(currentTemp);
-            timeLabels.push(timeString);
-
-            // Keep only last 20 data points
-            if (temperatureData.length > 20) {
-                temperatureData.shift();
-                timeLabels.shift();
-            }
-
-            // Update chart if it exists
-            if (temperatureChart) {
-                temperatureChart.data.labels = timeLabels;
-                temperatureChart.data.datasets[0].data = temperatureData;
-                temperatureChart.update('none'); // Update without animation
-            }
-        }
-
-        function initializeChart() {
-            const ctx = document.getElementById('temperatureChart').getContext('2d');
-
-            // Gradient for the chart line
-            let gradient = ctx.createLinearGradient(0, 0, 0, 400);
-            gradient.addColorStop(0, 'rgba(244, 63, 94, 0.5)'); // Rose
-            gradient.addColorStop(1, 'rgba(244, 63, 94, 0)');
-
-            temperatureChart = new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: timeLabels,
-                    datasets: [{
-                        label: 'Temperature',
-                        data: temperatureData,
-                        borderColor: '#fb7185',
-                        backgroundColor: gradient,
-                        borderWidth: 3,
-                        fill: true,
-                        tension: 0.4,
-                        pointBackgroundColor: '#fb7185',
-                        pointBorderColor: '#fff',
-                        pointBorderWidth: 2,
-                        pointRadius: 6,
-                        pointHoverRadius: 8
-                    }]
+        const chart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: ['10:00', '10:05', '10:10', '10:15', '10:20', '10:25'],
+                datasets: [{
+                    label: 'Temperature',
+                    data: [23.5, 23.8, 24.1, 24.0, 24.5, 24.3],
+                    borderColor: '#fb7185',
+                    backgroundColor: gradient,
+                    borderWidth: 3,
+                    fill: true,
+                    tension: 0.4,
+                    pointBackgroundColor: '#fb7185',
+                    pointBorderColor: '#fff',
+                    pointBorderWidth: 2,
+                    pointRadius: 6,
+                    pointHoverRadius: 8
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false }
                 },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: { display: false }
+                scales: {
+                    x: {
+                        grid: { display: false },
+                        ticks: { color: 'rgba(255,255,255,0.6)' }
                     },
-                    scales: {
-                        x: {
-                            grid: { display: false },
-                            ticks: { color: 'rgba(255,255,255,0.6)' }
-                        },
-                        y: {
-                            grid: { color: 'rgba(255,255,255,0.05)' },
-                            ticks: { color: 'rgba(255,255,255,0.6)' },
-                            border: { display: false }
-                        }
+                    y: {
+                        grid: { color: 'rgba(255,255,255,0.05)' },
+                        ticks: { color: 'rgba(255,255,255,0.6)' },
+                        border: { display: false }
                     }
                 }
-            });
-        }
-
-        // Initialize chart when page loads
-        window.addEventListener('load', function () {
-            initializeChart();
+            }
         });
-
-        // Poll backend every 2 seconds
-        setInterval(() => {
-            fetch("/api/state")
-                .then(res => res.json())
-                .then(updateUI)
-                .catch(err => console.error("API error:", err));
-        }, 2000);
     </script>
 </body>
 

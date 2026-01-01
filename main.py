@@ -23,7 +23,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-TEMP_THRESHOLD = 20.0
+TEMP_THRESHOLD = 7.0
 relay_mode = "AUTO"  # AUTO | MANUAL
 
 # ================= RELAY CONTROL =================
