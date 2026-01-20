@@ -13,6 +13,10 @@ from mqtt_client import (
     state_lock,
     TOPIC_RELAY,
 )
+from simulation import start_battery_simulation
+
+# Start simulation
+start_battery_simulation()
 
 app = FastAPI()
 app.mount("/static", StaticFiles(directory="static"), name="static")
