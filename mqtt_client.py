@@ -51,7 +51,7 @@ def on_message(client, userdata, msg):
                     {
                         "temperature": data.get("temperature", 0.0),
                         "humidity": data.get("humidity", 0.0),
-                        "battery": data.get("battery", 0),
+                        # "battery": data.get("battery", 0),  # Handled by simulation
                     }
                 )
             except json.JSONDecodeError:

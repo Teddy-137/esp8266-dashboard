@@ -4,6 +4,7 @@ from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from threading import Lock
+from simulation import start_battery_simulation
 
 from mqtt_client import (
     client,
@@ -13,9 +14,7 @@ from mqtt_client import (
     state_lock,
     TOPIC_RELAY,
 )
-from simulation import start_battery_simulation
 
-# Start simulation
 start_battery_simulation()
 
 app = FastAPI()
@@ -43,7 +42,6 @@ app.add_middleware(
 TEMP_THRESHOLD = 7.0
 relay_mode = "AUTO"  # AUTO | MANUAL
 
-# ================= RELAY CONTROL =================
 
 
 @app.post("/relay/on")
@@ -77,7 +75,6 @@ def relay_auto():
     return {"mode": "AUTO"}
 
 
-# ================= AUTO CONTROL LOOP =================
 
 
 @app.get("/control/auto")
