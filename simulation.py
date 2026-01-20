@@ -8,7 +8,7 @@ def simulate_battery():
         with state_lock:
             latest_data["battery"] = battery_level
         
-        time.sleep(24) # Decrease every 5 seconds
+        time.sleep(64) # Decrease every 5 seconds
         battery_level -= 1
         
         if battery_level < 0:
